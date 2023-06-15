@@ -4,6 +4,9 @@ import java.io.Console;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 
+/**
+ * An {@link CommandLine} that accepts inputs from the application stdin.
+ */
 public class ConsoleCommandLine extends CommandLine {
 	
 	private static ConsoleCommandLine self;
@@ -86,12 +89,15 @@ public class ConsoleCommandLine extends CommandLine {
 	}
 	
 	/**
-	 * @return True if the consoleThread has been initialized and is alive, false otherwise.
+	 * @return True if the console thread has been initialized and is alive, false otherwise.
 	 */
 	public boolean isAlive() {
 		return consoleThread!=null&&consoleThread.isAlive();
 	}
 	
+	/**
+	 * @return The singleton instance of the console command line.
+	 */
 	public static ConsoleCommandLine getInstance() {
 		return self == null ? new ConsoleCommandLine() : self;
 	}

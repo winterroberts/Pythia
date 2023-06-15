@@ -13,19 +13,27 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 
-import net.aionstudios.hestia.data.ComparablePair;
-import net.aionstudios.hestia.data.Pair;
+import net.winrob.hestia.data.ComparablePair;
+import net.winrob.hestia.data.Pair;
 import net.winrob.pythia.Command.Description;
 import net.winrob.pythia.Command.Option;
 import net.winrob.pythia.Command.Parameter;
 import net.winrob.pythia.Command.SubCommand;
 
+/**
+ * A collection of commands which accepts and interprets included {@link Command}s by their keywords and definition.
+ * 
+ * @author Winter Roberts
+ */
 public class CommandLine {
 	
 	private Map<String, CommandInterpreter> commands;
 	
 	private Map<Class<?>, ArgumentConverter<?>> converters;
 	
+	/**
+	 * Creates a new command line, with default support for {@link StringConverter} and {@link IntegerConverter} arguments.
+	 */
 	public CommandLine() {
 		commands = new HashMap<>();
 		converters = new HashMap<>();
@@ -33,11 +41,21 @@ public class CommandLine {
 		addConverter(Integer.class, new IntegerConverter());
 	}
 	
+	/**
+	 * Adds a {@link CommandInterpreter} invoked by the keyword.
+	 * 
+	 * @param keyword The keyword which should invoke the interpreter.
+	 * @param command The {@link Command} class for which the {@link CommandInterpreter} should be created.
+	 * @throws KeyWordCollisionException If the keyword is already in use.
+	 */
 	public void addCommand(String keyword, Class<? extends Command> command) {
 		if (commands.containsKey(keyword)) throw new KeyWordCollisionException("Keyword '" + keyword + "' is already in use!");
 		commands.put(keyword, new CommandInterpreter(keyword, command));
 	}
 
+	/**
+	 * Interprets command line arguments passed by the parent {@link CommandLine}, according to the {@link Command} class definition.
+	 */
 	public class CommandInterpreter {
 		
 		private String keyword;
@@ -50,6 +68,12 @@ public class CommandLine {
 		
 		private Description description;
 		
+		/**
+		 * Uses the {@link Command} class definition to construct an interpreter.
+		 * 
+		 * @param keyword The keyword which invokes the interpreter.
+		 * @param command The {@link Command} class for which this interpreter should be created.
+		 */
 		protected CommandInterpreter(String keyword, Class<? extends Command> command) {
 			this.keyword = keyword;
 			this.command = command;
@@ -89,11 +113,23 @@ public class CommandLine {
 			}
 		}
 		
+		/**
+		 * @param alias The alias that should be created.
+		 * @param option The {@link Command} {@link Option} that should be aliased.
+		 */
 		public void addOptionAlias(String alias, Option option) {
 			if (optionAlias.containsKey(alias)) throw new KeyWordCollisionException("Option keyword '" + alias + "' is already in use!");
 			optionAlias.put(alias, option);
 		}
 		
+		/**
+		 * Interprets {@link CommandLine} input, returning a populated and instantiated {@link Command} instance.
+		 * 
+		 * @param argItr An iterator over the arguments to the interpreter.
+		 * @return A {@link Command} which has been populated with the interpreted arguments, which may be a sub command.
+		 * @throws CommandInterpretException If the arguments were malformed or insufficient to populate the identified {@link Command} instance.
+		 * @throws IllegalAccessException If any {@link Field} in the {@link Command} was inaccessible to be populated by an interpreted argument.
+		 */
 		protected Command interpret(Iterator<String> argItr) throws CommandInterpretException, IllegalAccessException {
 			String nextWord = argItr.hasNext() ? argItr.next() : null;
 			if (subCommandLine != null && nextWord != null && subCommandLine.hasCommandWord(nextWord)) {
@@ -146,14 +182,28 @@ public class CommandLine {
 			}
 		}
 		
+		/**
+		 * @return True if this interpreter has a sub-{@link CommandLine} (the {@link Command} defined a {@link SubCommand}, false otherwise.
+		 */
 		public boolean hasSubCommandLine() {
 			return subCommandLine != null;
 		}
 		
+		/**
+		 * @return The sub-{@link CommandLine} if it exists, null otherwise.
+		 */
 		public CommandLine getSubCommandLine() {
 			return hasSubCommandLine() ? subCommandLine : null;
 		}
 		
+		/**
+		 * Converts argument(s) from input to a typed object.
+		 * 
+		 * @param <T> The type of the object for which argument(s) should be interpreted.
+		 * @param clazz The expected class of the output typed object.
+		 * @param argument An iterator over the arguments to the interpreter.
+		 * @return A typed object, the result of converting argument(s).
+		 */
 		@SuppressWarnings("unchecked")
 		private <T> T convertArgument(Class<T> clazz, Iterator<String> argument) {
 			return (T) converters.get(clazz).parseArg(argument);
@@ -161,6 +211,9 @@ public class CommandLine {
 		
 		private String helpDialog;
 		
+		/**
+		 * Builds the help dialog for the {@link Command} this object interprets, printing it to stdout.
+		 */
 		public void showHelpDialog() {
 			if (helpDialog == null) {
 				StringBuilder builder = new StringBuilder();
@@ -219,6 +272,15 @@ public class CommandLine {
 			System.out.println(helpDialog);
 		}
 		
+		/**
+		 * Adds space and newline characters to the input text to word-wrap the input string.
+		 * If a word exceeds the line's wrap length, it is wrapped inelegantly.
+		 * 
+		 * @param text The text that should be word-wrapped.
+		 * @param wrapStart The number of blank spaces which should occur before text.
+		 * @param wrapLength The maximum length of a line before word-wrapping should occur.
+		 * @return The word-wrapped version of the input text.
+		 */
 		private String wrapText(String text, String wrapStart, int wrapLength) {
 			StringBuilder sb = new StringBuilder(text);
 
@@ -232,14 +294,35 @@ public class CommandLine {
 		
 	}
 	
+	/**
+	 * Executes an input, which should be interpreted from spaces.
+	 * 
+	 * @param args The arguments which should execute a {@link Command}.
+	 * @throws CommandInterpretException If no {@link CommandInterpeter} could be found matching the input, including if the input is malformed.
+	 * @throws IllegalAccessException If any {@link Field} in the {@link Command} was inaccessible to be populated by an interpreted argument.
+	 */
 	public void execute(String... args) throws CommandInterpretException, IllegalAccessException {
 		execute(Arrays.stream(args).iterator());
 	}
 	
+	/**
+	 * Executes an input, which should be interpreted from spaces.
+	 * 
+	 * @param args The arguments which should execute a {@link Command}.
+	 * @throws CommandInterpretException If no {@link CommandInterpeter} could be found matching the input, including if the input is malformed.
+	 * @throws IllegalAccessException If any {@link Field} in the {@link Command} was inaccessible to be populated by an interpreted argument.
+	 */
 	public void execute(List<String> args) throws CommandInterpretException, IllegalAccessException {
 		execute(args.iterator());
 	}
 	
+	/**
+	 * Executes an input, which should be interpreted from spaces.
+	 * 
+	 * @param argItr An iterator over the arguments which should execute a {@link Command}.
+	 * @throws CommandInterpretException If no {@link CommandInterpeter} could be found matching the input, including if the input is malformed.
+	 * @throws IllegalAccessException If any {@link Field} in the {@link Command} was inaccessible to be populated by an interpreted argument.
+	 */
 	private void execute(Iterator<String> argItr) throws CommandInterpretException, IllegalAccessException {
 		if (!argItr.hasNext()) throw new CommandInterpretException("Out of tokens!");
 		String commandWord = argItr.next();
@@ -248,18 +331,38 @@ public class CommandLine {
 		interpreter.interpret(argItr).execute();
 	}
 	
+	/**
+	 * Adds an typed object {@link ArgumentConverter} to this command line.
+	 * 
+	 * @param <T> The type of the object for which argument(s) should be interpreted.
+	 * @param clazz The expected class of the output typed object.
+	 * @param converter The {@link ArgumentConverter} which creates the typed object.
+	 */
 	public <T> void addConverter(Class<T> clazz, ArgumentConverter<T> converter) {
 		converters.put(clazz, converter);
 	}
 	
+	/**
+	 * Gets the {@link CommandInterpreter} for a keyword.
+	 * 
+	 * @param word The keyword for which a {@link CommandInterpreter} should be found.
+	 * @return The associated {@link CommandInterpreter} if it exists, otherwise null.
+	 */
 	public CommandInterpreter getInterpreterForCommandWord(String word) {
 		return hasCommandWord(word) ? commands.get(word) : null;
 	}
 	
+	/**
+	 * @param word A keyword which may be associated with an {@link CommandInterpreter}.
+	 * @return True if a {@link CommandInterpreter} is associated with the keyword, false otherwise.
+	 */
 	public boolean hasCommandWord(String word) {
 		return commands.containsKey(word);
 	}
 	
+	/**
+	 * Thrown when an {@link CommandInterpreter} is unable to successfully interpret command line input.
+	 */
 	public class CommandInterpretException extends Exception {
 		
 		private static final long serialVersionUID = -8133225772318315478L;
@@ -270,6 +373,9 @@ public class CommandLine {
 		
 	}
 	
+	/**
+	 * Thrown when a keyword collision occurs because a {@link Command} is already registered to it.
+	 */
 	private class KeyWordCollisionException extends RuntimeException {
 
 		private static final long serialVersionUID = -7355538200994919749L;
