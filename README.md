@@ -1,2 +1,2 @@
 # Pythia
-Simple console command input
+Annotation-defined command interpreter
